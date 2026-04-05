@@ -4,7 +4,7 @@ E2E test automation for [Kriso.ee](https://www.kriso.ee) bookshop using [Playwri
 
 **Slides:** https://tanjaq.github.io/playwright-kriso/slides/
 
-Your task is to create automated tests based on the test cases described below.
+Your task is to create automated tests and a CI pipeline based on the descriptions below.
 
 ---
 
@@ -44,18 +44,23 @@ Your task is to create automated tests based on the test cases described below.
 
 ```
 tests/
-  kriso.spec.ts       ← Part I: flat tests (no POM)
-  kriso-pom.spec.ts   ← Part II: same tests using Page Object Model
-  fixtures.ts         ← Part II: injects page objects into tests
+  flat/
+    search.spec.ts      ← Part I: flat tests — Search for Books by Keywords
+    cart.spec.ts        ← Part I: flat tests — Add Books to Shopping Cart
+    filters.spec.ts     ← Part I: flat tests — Navigate Products via Filters
+  pom/
+    search.pom.spec.ts  ← Part II: same tests using Page Object Model
+    cart.pom.spec.ts    ← Part II: same tests using Page Object Model
+    filters.pom.spec.ts ← Part II: same tests using Page Object Model
+  fixtures.ts           ← Part II: injects page objects into tests
 
-pages/                ← Part II: Page Object Model classes
+pages/                  ← Part II: Page Object Model classes
   HomePage.ts
-  SearchPage.ts
   ProductPage.ts
   CartPage.ts
 
-.github/workflows/
-  playwright.yml      ← CI pipeline (runs on push and pull request)
+.github/workflows/      ← Part III: CI pipeline
+  playwright.yml
 ```
 
 ### Useful commands
@@ -67,6 +72,9 @@ npx playwright test --ui
 # Headed mode — watch the browser
 npx playwright test --headed
 
+# Run only a specific test file
+npx playwright test tests/flat/cart.spec.ts
+
 # Record new tests against Kriso
 npx playwright codegen https://www.kriso.ee
 
@@ -74,13 +82,11 @@ npx playwright codegen https://www.kriso.ee
 npx playwright show-report
 ```
 
-> **Tip:** Use only semantic selectors — `getByRole`, `getByText`, `getByPlaceholder`, `getByLabel`. No CSS class selectors. No XPath.
-
 ---
 
 ## Test Cases
 
-### Part I — Flat Tests (`tests/kriso.spec.ts`)
+### Part I — Flat Tests (`tests/flat/`)
 
 #### Search for Books by Keywords
 
@@ -125,13 +131,29 @@ npx playwright show-report
 
 ---
 
-### Part II — Page Object Model (`tests/kriso-pom.spec.ts`)
+### Part II — Page Object Model (`tests/pom/`)
 
 Refactor your Part I tests to use the Page Object Model:
 
-- Create page classes in `pages/` (already scaffolded)
+- Create page classes in `pages/` (already scaffolded with TODOs)
 - Use `tests/fixtures.ts` to inject page objects automatically
 - No raw selectors in test files — all locators live in page classes
-- The CI pipeline in `.github/workflows/playwright.yml` is already set up — push your code and confirm the run goes green
 
-> **Reminder:** Open a PR and paste the passing CI link in the description. That's how you submit.
+---
+
+### Part III — CI/CD Pipeline (`.github/workflows/playwright.yml`)
+
+Complete the scaffolded workflow file so your tests run automatically in the cloud on every push and pull request.
+
+**The pipeline must:**
+
+- Trigger on push to `main` and on pull requests targeting `main`
+- Run on a Linux machine
+- Install Node.js and npm dependencies
+- Install the Playwright browser binaries
+- Execute all tests
+- Upload the HTML report as an artifact (even when tests fail)
+
+Open `.github/workflows/playwright.yml` — each step has a `# TODO` comment explaining what to add. Fill in the blanks, push, then open the **Actions** tab in your GitHub repository to confirm the run goes green.
+
+> **Submitting:** copy the URL of the passing Actions run and paste it into your Pull Request description.
