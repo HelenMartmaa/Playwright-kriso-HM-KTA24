@@ -9,8 +9,8 @@ export class BasePage {
   constructor(protected page: Page) {
     this.logo = this.page.locator('.logo-icon');
     this.consentButton = this.page.getByRole('button', { name: 'Nõustun' });
-    this.searchInput = this.page.getByRole('textbox', { name: 'Pealkiri, autor, ISBN, märksõ' });
-    this.searchButton = this.page.getByRole('button', { name: 'Search' });
+    this.searchInput = this.page.locator('#top-search-text');
+    this.searchButton = this.page.locator('#top-search-btn-wrap');
   }
 
   async acceptCookies() {

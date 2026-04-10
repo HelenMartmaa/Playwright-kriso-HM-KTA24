@@ -10,6 +10,7 @@ export class HomePage extends BasePage {
   private readonly cartCount: Locator;
   private readonly backButton: Locator;
   private readonly forwardButton: Locator;
+  private readonly noResultsMessage: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -19,6 +20,7 @@ export class HomePage extends BasePage {
     this.cartCount = this.page.locator('.cart-products');
     this.backButton = this.page.locator('.cartbtn-event.back');
     this.forwardButton = this.page.locator('.cartbtn-event.forward');
+    this.noResultsMessage = this.page.locator('.msg.msg-info');
   }
 
   async openUrl() {
@@ -50,5 +52,9 @@ export class HomePage extends BasePage {
   async openShoppingCart() {
     await this.forwardButton.click();
     return new CartPage(this.page);
+  }
+
+  async verifyNoProductsFoundMessage() {
+    await expect(this.noResultsMessage).toContainText('Teie poolt sisestatud märksõnale vastavat raamatut ei leitud. Palun proovige uuesti!');
   }
 }
