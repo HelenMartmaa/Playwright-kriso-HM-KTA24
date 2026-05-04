@@ -1,60 +1,114 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { CartPage } from './CartPage';
+import { ProductPage } from './ProductPage';
 
 export class HomePage extends BasePage {
   private readonly url = 'https://www.kriso.ee/';
-  private readonly resultsTotal: Locator;
-  private readonly addToCartLink: Locator;
-  private readonly addToCartMessage: Locator;
-  private readonly cartCount: Locator;
-  private readonly backButton: Locator;
-  private readonly forwardButton: Locator;
-  private readonly noResultsMessage: Locator;
 
   constructor(page: Page) {
     super(page);
-    this.resultsTotal = this.page.locator('.sb-results-total');
-    this.addToCartLink = this.page.getByRole('link', { name: 'Lisa ostukorvi' });
-    this.addToCartMessage = this.page.locator('.item-messagebox');
-    this.cartCount = this.page.locator('.cart-products');
-    this.backButton = this.page.locator('.cartbtn-event.back');
-    this.forwardButton = this.page.locator('.cartbtn-event.forward');
-    this.noResultsMessage = this.page.locator('.msg.msg-info');
   }
 
   async openUrl() {
     await this.page.goto(this.url);
   }
 
+  async verifyNoProductsFoundMessage() {
+    await expect(
+      this.page.getByText(
+        'Teie poolt sisestatud märksõnale vastavat raamatut ei leitud. Palun proovige uuesti!'
+      )
+    ).toBeVisible();
+  }
+
+  async getResultsCount(): Promise<number> {
+    const resultsText = await this.page
+      .getByText(/Otsingu vasteid leitud:\s*\d+/)
+      .first()
+      .textContent();
+
+    return Number((resultsText || '').replace(/\D/g, '')) || 0;
+  }
+
   async verifyResultsCountMoreThan(minCount: number) {
-    const resultsText = await this.resultsTotal.textContent();
-    const total = Number((resultsText || '').replace(/\D/g, '')) || 0;
+    await expect(
+      this.page.getByText(/Otsingu vasteid leitud:\s*\d+/).first()
+    ).toBeVisible();
+
+    const total = await this.getResultsCount();
+
     expect(total).toBeGreaterThan(minCount);
   }
 
+  async verifySearchResultsContainKeyword(keyword: string) {
+    const keywordResults = this.page.getByText(new RegExp(keyword, 'i'));
+
+    await expect(keywordResults.first()).toBeVisible();
+
+    const count = await keywordResults.count();
+    expect(count).toBeGreaterThan(1);
+  }
+
+  async verifyBookIsShown(bookTitle: string) {
+    await expect(this.page.getByText(new RegExp(bookTitle, 'i')).first()).toBeVisible();
+  }
+
+  async verifyMultipleProductsCanBeAddedToCart() {
+    const addToCartLinks = this.page.getByRole('link', { name: 'Lisa ostukorvi' });
+
+    await expect(addToCartLinks.first()).toBeVisible();
+
+    const count = await addToCartLinks.count();
+    expect(count).toBeGreaterThan(1);
+  }
+
   async addToCartByIndex(index: number) {
-    await this.addToCartLink.nth(index).click();
+    await this.page.getByRole('link', { name: 'Lisa ostukorvi' }).nth(index).click();
   }
 
   async verifyAddToCartMessage() {
-    await expect(this.addToCartMessage).toContainText('Toode lisati ostukorvi');
+    await expect(this.page.getByText('Toode lisati ostukorvi')).toBeVisible();
   }
 
-  async verifyCartCount(expectedCount: number) {
-    await expect(this.cartCount).toContainText(expectedCount.toString());
-  }
+  async openCartFromAddToCartMessage(): Promise<CartPage> {
+    await this.page.getByRole('link', { name: /Mine ostukorvi/i }).click();
 
-  async goBackFromCart() {
-    await this.backButton.click();
-  }
+    await expect(this.page).toHaveURL(/basket/i);
 
-  async openShoppingCart() {
-    await this.forwardButton.click();
     return new CartPage(this.page);
   }
 
-  async verifyNoProductsFoundMessage() {
-    await expect(this.noResultsMessage).toContainText('Teie poolt sisestatud märksõnale vastavat raamatut ei leitud. Palun proovige uuesti!');
+  async returnToSearchResults(keyword: string) {
+    await this.openUrl();
+    await this.searchByKeyword(keyword);
+
+    await expect(
+      this.page.getByRole('link', { name: 'Lisa ostukorvi' }).nth(1)
+    ).toBeVisible();
+  }
+
+  async openGuitarCategory(): Promise<ProductPage> {
+    const musicSection = this.page
+      .getByRole('link', { name: 'Muusikaraamatud ja noodid' })
+      .first();
+
+    await expect(musicSection).toBeVisible();
+
+    const guitarLink = this.page.getByRole('link', { name: 'Kitarr' }).first();
+
+    if (!(await guitarLink.isVisible().catch(() => false))) {
+      await musicSection.click();
+    }
+
+    await expect(guitarLink).toBeVisible();
+    await guitarLink.click();
+
+    await expect(this.page).toHaveURL(/instrument=Guitar/i);
+    await expect(
+      this.page.getByText(/Otsingu vasteid leitud:\s*\d+/).first()
+    ).toBeVisible();
+
+    return new ProductPage(this.page);
   }
 }

@@ -1,29 +1,27 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
 
 export class BasePage {
-  protected readonly logo: Locator;
-  protected readonly consentButton: Locator;
-  protected readonly searchInput: Locator;
-  protected readonly searchButton: Locator;
+  constructor(protected readonly page: Page) {}
 
-  constructor(protected page: Page) {
-    this.logo = this.page.locator('.logo-icon');
-    this.consentButton = this.page.getByRole('button', { name: 'Nõustun' });
-    this.searchInput = this.page.locator('#top-search-text');
-    this.searchButton = this.page.locator('#top-search-btn-wrap');
+  async acceptCookiesIfVisible() {
+    const consentButton = this.page.getByRole('button', { name: 'Nõustun' });
+
+    if (await consentButton.isVisible().catch(() => false)) {
+      await consentButton.click();
+    }
   }
 
-  async acceptCookies() {
-    await this.consentButton.click();
-  }
-
-  async verifyLogo() {
-    await expect(this.logo).toBeVisible();
+  async verifyPageHasKrisoTitle() {
+    await expect(this.page).toHaveTitle(/Kriso|Krisostomus/i);
   }
 
   async searchByKeyword(keyword: string) {
-    await this.searchInput.click();
-    await this.searchInput.fill(keyword);
-    await this.searchButton.click();
+    const searchInput = this.page.getByRole('textbox', {
+      name: /Pealkiri, autor, ISBN, märksõ/i,
+    });
+
+    await searchInput.click();
+    await searchInput.fill(keyword);
+    await this.page.getByRole('button', { name: 'Search' }).click();
   }
 }

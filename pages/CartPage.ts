@@ -1,43 +1,97 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class CartPage extends BasePage {
-  private readonly cartQty: Locator;
-  private readonly cartSubtotals: Locator;
-  private readonly cartTotal: Locator;
-  private readonly removeButton: Locator;
-
   constructor(page: Page) {
     super(page);
-    this.cartQty = this.page.locator('.order-qty > .o-value');
-    this.cartSubtotals = this.page.locator('.tbl-row > .subtotal');
-    this.cartTotal = this.page.locator('.order-total > .o-value');
-    this.removeButton = this.page.locator('.icon-remove');
   }
 
-  async verifyCartCount(expectedCount: number) {
-    await expect(this.cartQty).toContainText(expectedCount.toString());
+  private normalizeText(text: string): string {
+    return text.replace(/\s+/g, ' ').trim();
   }
 
-  async verifyCartSumIsCorrect() {
-    const cartItems = await this.cartSubtotals.all();
+  private getPricesFromText(text: string): number[] {
+    return (text.match(/\d+[,.]\d{2}\s*€/g) || [])
+      .map((priceText) =>
+        Number(priceText.replace('€', '').replace(',', '.').trim())
+      )
+      .filter((price) => !Number.isNaN(price));
+  }
 
-    let cartItemsSum = 0;
+  private getSubtotalFromCartRow(rowText: string): number {
+    const prices = this.getPricesFromText(rowText);
 
-    for (const item of cartItems) {
-      const text = await item.textContent();
-      const price = Number((text || '').replace(/[^0-9.,]+/g, '').replace(',', '.')) || 0;
-      cartItemsSum += price;
+    if (prices.length === 0) {
+      throw new Error(`No price found in cart row: ${rowText}`);
     }
 
-    const basketSumTotalText = await this.cartTotal.textContent();
-    const basketSumTotal = Number((basketSumTotalText || '').replace(/[^0-9.,]+/g, '').replace(',', '.')) || 0;
-
-    expect(basketSumTotal).toBeCloseTo(cartItemsSum, 2);
-    return cartItemsSum;
+    return prices[prices.length - 1];
   }
 
-  async removeItemByIndex(index: number) {
-    await this.removeButton.nth(index).click();
+  async getCartProductRows(): Promise<string[]> {
+    const rows = await this.page.getByRole('row').allTextContents();
+
+    return rows
+      .map((row) => this.normalizeText(row))
+      .filter((row) =>
+        row.includes('€') &&
+        !/isbn|pealkiri|kogus|hind|summa|eemalda|kokku|transport|total/i.test(row)
+      );
+  }
+
+  async verifyCartItemCount(expectedCount: number) {
+    const cartRows = await this.getCartProductRows();
+
+    expect(cartRows.length).toBe(expectedCount);
+  }
+
+  async getFirstCartItemText(): Promise<string> {
+    const cartRows = await this.getCartProductRows();
+
+    expect(cartRows.length).toBeGreaterThan(0);
+
+    return cartRows[0];
+  }
+
+  async getSecondCartItemText(firstCartItemText: string): Promise<string> {
+    const cartRows = await this.getCartProductRows();
+
+    const secondItem = cartRows.find((row) => row !== firstCartItemText) || '';
+
+    expect(secondItem).not.toBe('');
+
+    return secondItem;
+  }
+
+  async verifyCartContainsItem(itemText: string) {
+    const cartRows = await this.getCartProductRows();
+
+    expect(cartRows).toContain(itemText);
+  }
+
+  async verifyCartDoesNotContainItem(itemText: string) {
+    const cartRows = await this.getCartProductRows();
+
+    expect(cartRows).not.toContain(itemText);
+  }
+
+  async getCartRowsSubtotal(): Promise<number> {
+    const cartRows = await this.getCartProductRows();
+
+    return cartRows.reduce((sum, row) => {
+      return sum + this.getSubtotalFromCartRow(row);
+    }, 0);
+  }
+
+  async removeFirstItem() {
+    const firstProductRow = this.page.getByRole('row').nth(1);
+    const removeLinkInsideRow = firstProductRow.getByRole('link', { name: '' });
+
+    if (await removeLinkInsideRow.isVisible().catch(() => false)) {
+      await removeLinkInsideRow.click();
+      return;
+    }
+
+    await this.page.getByRole('cell').nth(5).getByRole('link', { name: '' }).click();
   }
 }

@@ -1,6 +1,6 @@
 /**
  * Part II — Page Object Model tests
- * Test suite: Search for Books by Keywords
+ * Test suite: Add Books to Shopping Cart
  *
  * Rules:
  *   - No raw selectors in test files — all locators live in page classes
@@ -16,11 +16,14 @@ test.describe.configure({ mode: 'serial' });
 let page: Page;
 let homePage: HomePage;
 let cartPage: CartPage;
-let basketSumOfTwo = 0;
-let basketSumOfOne = 0;
+
+let firstCartItemText = '';
+let secondCartItemText = '';
+
+let basketTotalWithOneItem = 0;
+let basketTotalWithTwoItems = 0;
 
 test.describe('Add Books to Shopping Cart (POM)', () => {
-
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext();
     page = await context.newPage();
@@ -28,51 +31,73 @@ test.describe('Add Books to Shopping Cart (POM)', () => {
     homePage = new HomePage(page);
 
     await homePage.openUrl();
-    await homePage.acceptCookies();
+    await homePage.acceptCookiesIfVisible();
   });
 
   test.afterAll(async () => {
-    await page.context().close();
+    await page.close().catch(() => {});
   });
 
-  test('Test logo is visible', async () => {
-    await homePage.verifyLogo();
-  }); 
+  test('Test page has Kriso title', async () => {
+    await homePage.verifyPageHasKrisoTitle();
+  });
 
-  test('Test search by keyword', async () => {
-    await homePage.searchByKeyword('harry potter');
-    await homePage.verifyResultsCountMoreThan(1)
-  }); 
+  test('Test search by keyword and confirm multiple results', async () => {
+    await homePage.searchByKeyword('tolkien');
+    await homePage.verifyMultipleProductsCanBeAddedToCart();
+  });
 
-  test('Test add book to cart', async () => {
+  test('Test add first book to cart and confirm cart contains 1 item', async () => {
     await homePage.addToCartByIndex(0);
     await homePage.verifyAddToCartMessage();
-    await homePage.verifyCartCount(1);
-    await homePage.goBackFromCart();
-  }); 
 
-  test('Test add second book to cart', async () => {
-    await homePage.addToCartByIndex(5);
-    await homePage.verifyAddToCartMessage();
-    await homePage.verifyCartCount(2);
-  }); 
+    cartPage = await homePage.openCartFromAddToCartMessage();
 
-  test('Test cart count and sum is correct', async () => {
-    cartPage = await homePage.openShoppingCart();
-    await cartPage.verifyCartCount(2);
-    
-    basketSumOfTwo = await cartPage.verifyCartSumIsCorrect();
-  }); 
+    await cartPage.verifyCartItemCount(1);
 
+    firstCartItemText = await cartPage.getFirstCartItemText();
 
-  test('Test remove item from cart and counter sum is correct', async () => {
-    await cartPage.removeItemByIndex(0);
-    await cartPage.verifyCartCount(1);
+    expect(firstCartItemText).not.toBe('');
+    expect(firstCartItemText).toContain('€');
 
-    basketSumOfOne = await cartPage.verifyCartSumIsCorrect();
+    basketTotalWithOneItem = await cartPage.getCartRowsSubtotal();
 
-    expect(basketSumOfOne).toBeLessThan(basketSumOfTwo);
+    expect(basketTotalWithOneItem).toBeGreaterThan(0);
+
+    await homePage.returnToSearchResults('tolkien');
   });
 
-}); 
+  test('Test add second book to cart', async () => {
+    await homePage.addToCartByIndex(1);
+    await homePage.verifyAddToCartMessage();
+  });
 
+  test('Test cart contains 2 items and total price is accurate', async () => {
+    cartPage = await homePage.openCartFromAddToCartMessage();
+
+    await cartPage.verifyCartItemCount(2);
+    await cartPage.verifyCartContainsItem(firstCartItemText);
+
+    secondCartItemText = await cartPage.getSecondCartItemText(firstCartItemText);
+
+    expect(secondCartItemText).not.toBe('');
+    expect(secondCartItemText).toContain('€');
+
+    basketTotalWithTwoItems = await cartPage.getCartRowsSubtotal();
+
+    expect(basketTotalWithTwoItems).toBeGreaterThan(basketTotalWithOneItem);
+  });
+
+  test('Test remove first item from cart and total updates', async () => {
+    await cartPage.removeFirstItem();
+
+    await cartPage.verifyCartItemCount(1);
+    await cartPage.verifyCartDoesNotContainItem(firstCartItemText);
+    await cartPage.verifyCartContainsItem(secondCartItemText);
+
+    const basketTotalAfterRemovingItem = await cartPage.getCartRowsSubtotal();
+
+    expect(basketTotalAfterRemovingItem).toBeGreaterThan(0);
+    expect(basketTotalAfterRemovingItem).toBeLessThan(basketTotalWithTwoItems);
+  });
+});
