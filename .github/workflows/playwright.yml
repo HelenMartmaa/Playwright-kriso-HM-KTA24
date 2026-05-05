@@ -28,7 +28,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright tests
-        run: npx playwright test tests/flat tests/pom --project=chromium --workers=1 --timeout=60000
+        run: xvfb-run --auto-servernum -- npx playwright test tests/flat tests/pom --project=chromium --workers=1 --timeout=60000 --headed
 
       - name: Upload test report
         if: always()
