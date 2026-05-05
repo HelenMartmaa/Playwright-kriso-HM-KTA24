@@ -17,7 +17,14 @@ let homePage: HomePage;
 
 test.describe('Search for Books by Keywords (POM)', () => {
   test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
+    const context = await browser.newContext({
+      locale: 'et-EE',
+      timezoneId: 'Europe/Tallinn',
+      extraHTTPHeaders: {
+        'Accept-Language': 'et-EE,et;q=0.9,en;q=0.8',
+      },
+    });
+
     page = await context.newPage();
 
     homePage = new HomePage(page);

@@ -78,7 +78,13 @@ async function removeCdAndEnglishFilters(page: Page) {
 
 test.describe('Navigate Products via Filters', () => {
   test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
+    const context = await browser.newContext({
+      locale: 'et-EE',
+      timezoneId: 'Europe/Tallinn',
+      extraHTTPHeaders: {
+        'Accept-Language': 'et-EE,et;q=0.9,en;q=0.8',
+      },
+    });
     page = await context.newPage();
 
     await page.goto('https://www.kriso.ee/');

@@ -25,7 +25,14 @@ let basketTotalWithTwoItems = 0;
 
 test.describe('Add Books to Shopping Cart (POM)', () => {
   test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
+    const context = await browser.newContext({
+      locale: 'et-EE',
+      timezoneId: 'Europe/Tallinn',
+      extraHTTPHeaders: {
+        'Accept-Language': 'et-EE,et;q=0.9,en;q=0.8',
+      },
+    });
+    
     page = await context.newPage();
 
     homePage = new HomePage(page);
